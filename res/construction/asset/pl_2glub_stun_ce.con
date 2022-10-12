@@ -1,0 +1,106 @@
+local vec3 = require "vec3"
+local streetutil = require "streetutil"
+
+function data()
+return {
+  type = "ASSET_DEFAULT",
+	description = { name = _("2 gleisige Überführung mit Strassen Unterführung") },
+	categories = { "Pl_Addon" },
+ updateFn = function(params)
+    local result = { }
+ 
+    result.models = { } -- key 'models' is required, but MUST be empty
+ 
+		result.edgeLists = {
+
+		{
+				type = "STREET",
+				params = {
+					type = "standard/town_medium_new.lua",
+				},
+				
+	
+				
+				edges = {
+				
+
+
+{ { -2.5, -45.0,  0.0 },  { 0.0, 15.0, 0.00 } },
+{ { -2.5, 60.0,  0.0 },  {0.0, 15.0, 0.00 } },
+
+
+				},
+				
+				snapNodes = {0,1},
+				freeNodes = {0,1}
+			},
+
+			{
+				type = "TRACK",
+				params = {
+					type = "standard.lua",
+					catenary = true
+				},
+				
+				
+				edgeType = "BRIDGE",                          -- optional
+				edgeTypeName = "plo_cement.lua",                  -- optional			
+				edges = {
+
+
+
+{ { -10.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { 10.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+{ { -10.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { 10.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+
+
+				},
+				
+				snapNodes = {},
+				freeNodes = {0,1,2,3}
+			},
+
+			{
+				type = "TRACK",
+				params = {
+					type = "standard.lua",
+					catenary = true
+				},
+				
+				
+				edgeType = "BRIDGE",                          -- optional
+				edgeTypeName = "cement.lua",                  -- optional			
+				edges = {
+
+
+
+{ { -30.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { -10.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+{ { -30.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { -10.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+{ { 10.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { 30.0, 5.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+{ { 10.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+{ { 30.0, 10.0,  8.0 },  {40.0, 0.0, 0.00 } },
+
+
+
+				},
+				
+				snapNodes = {0,2,5,7},
+				freeNodes = {0,1,2,3,4,5,6,7}
+			},
+
+ }
+ 
+    return result
+  end
+}
+end
+

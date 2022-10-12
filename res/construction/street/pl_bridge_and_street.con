@@ -1,0 +1,175 @@
+local prm = require "plbs_params"
+local vec3 = require "vec3"
+local streetutil = require "streetutil"
+
+function data()
+	return {
+		type = "STREET_CONSTRUCTION",
+		description = {
+			name = _("build with bridge"),
+			description = _("bridge construction"),
+		},
+		availability = {yearFrom = 1925
+		},
+		params = prm.paramsDef,
+
+		updateFn = function(params)
+			local result = {}
+			result.edgeLists = {}
+			result.models = {}
+
+			local streetType = prm.streetType.getIndex(params) + 1
+			local numberOfStreetsLeft = prm.numberOfStreetsLeft.getValue(params)
+			local numberOfStreetsRight = prm.numberOfStreetsRight.getValue(params)
+			local trackType = prm.trackType.getIndex(params) + 1
+			local numberOfTracks = prm.numberOfTracks.getValue(params)
+			local streetLeftHeight = prm.streetLeftHeight.getIndex(params) + 1
+			local streetRightHeight = prm.streetRightHeight.getIndex(params) + 1
+			local trackHeight = prm.trackHeight.getIndex(params) + 1
+			local bridgeType = prm.bridgeType.getIndex(params) + 1
+			local bridgeHeight = prm.bridgeHeight.getValue(params)
+			local embankmentHeight = prm.embankmentHeight.getValue(params)
+			local tunnelHeight = prm.tunnelHeight.getValue(params)
+			local streetSpacingLeft = prm.streetSpacingLeft.getValue(params)
+			local streetSpacingRight = prm.streetSpacingRight.getValue(params)
+			local trackSpacing = prm.trackSpacing.getValue(params)
+			local trackLeftStreetSpacing = prm.trackLeftStreetSpacing.getValue(params)
+			local trackRightStreetSpacing = prm.trackRightStreetSpacing.getValue(params)
+			local lengthLeftStreet = prm.lengthLeftStreet.getValue(params)
+			local lengthRightStreet = prm.lengthRightStreet.getValue(params)
+			local lengthTrack = prm.lengthTrack.getValue(params)
+
+			local z = {-0.47, 0, bridgeHeight, embankmentHeight, tunnelHeight} -- -0.47 only for track means that streets start at position 2
+			local yOuterTrack = (1 - numberOfTracks) * trackSpacing * 0.5 -- position of left track, invert to get the position of right track
+
+			local streetLeftEdges = {}
+			local streetLeftSnapNodes = {}
+			local yLeft = yOuterTrack - trackLeftStreetSpacing
+			local zLeft = z[streetLeftHeight + 1] -- + 1 for start at list position 2
+
+			for i = 1, numberOfStreetsLeft do
+				streetutil.addStraightEdge(streetLeftEdges, vec3.new(0.5 * -lengthLeftStreet, yLeft, zLeft), vec3.new(0, yLeft, zLeft))
+				streetLeftSnapNodes[2 * i - 1] = 4 * (i - 1) -- start
+				streetutil.addStraightEdge(streetLeftEdges, vec3.new(0, yLeft, zLeft), vec3.new( 0.5 * lengthLeftStreet, yLeft, zLeft))
+				streetLeftSnapNodes[2 * i] = 4 * (i - 1) + 3 -- end
+				yLeft = yLeft - streetSpacingLeft
+			end
+
+			local trackEdges = {}
+			local trackSnapNodes = {}
+			local yTrack = yOuterTrack
+			local zTrack = z[trackHeight]
+			local direction = 1
+
+			for i = 1, numberOfTracks do
+				if numberOfTracks == 2 and i == 2 then
+					direction = -1
+				end
+				streetutil.addStraightEdge(trackEdges, vec3.new(0.5 * -lengthTrack * direction, yTrack, zTrack), vec3.new(0, yTrack, zTrack))
+				trackSnapNodes[2 * i - 1] = 4 * (i - 1) -- start
+				streetutil.addStraightEdge(trackEdges, vec3.new(0, yTrack, zTrack), vec3.new( 0.5 * lengthTrack * direction, yTrack, zTrack))
+				trackSnapNodes[2 * i] = 4 * (i - 1) + 3 -- end
+				yTrack = yTrack + trackSpacing
+			end
+
+			local streetRightEdges = {}
+			local streetRightSnapNodes = {}
+			local yRight = trackRightStreetSpacing - yOuterTrack -- yOuterTrack inverted/flipped
+			local zRight = z[streetRightHeight + 1] -- + 1 for start at list position 2
+
+			for i = 1, numberOfStreetsRight do
+				streetutil.addStraightEdge(streetRightEdges, vec3.new(0.5 * lengthRightStreet, yRight, zRight), vec3.new(0, yRight, zRight))
+				streetRightSnapNodes[2 * i - 1] = 4 * (i - 1) -- start
+				streetutil.addStraightEdge(streetRightEdges, vec3.new(0, yRight, zRight), vec3.new( 0.5 * -lengthRightStreet, yRight, zRight))
+				streetRightSnapNodes[2 * i] = 4 * (i - 1) + 3 -- end
+				yRight = yRight + streetSpacingRight
+			end
+
+			local streetLeftEdge = {}
+			local trackEdge = {}
+			local streetRightEdge = {}
+
+			if numberOfStreetsLeft > 0 then
+				streetLeftEdge = {
+					type = "STREET",
+					alignTerrain = true,
+					params = {
+						type = prm.streetTypes[streetType],
+					},
+					edges = streetLeftEdges,
+					snapNodes = streetLeftSnapNodes,
+					freeNodes = streetutil.freeAllNodes(streetLeftEdges),
+				}
+
+				if streetLeftHeight == 2 then
+					streetLeftEdge.edgeType = "BRIDGE"
+					streetLeftEdge.edgeTypeName = prm.bridgeTypes[bridgeType]
+				elseif streetLeftHeight == 4 then
+					streetLeftEdge.edgeType = "TUNNEL" -- optional
+					streetLeftEdge.edgeTypeName = "street_old.lua" -- optional
+				end
+
+				table.insert(result.edgeLists, streetLeftEdge)
+			end
+
+			if numberOfTracks > 0 then
+				trackEdge = {
+					type = "TRACK",
+					alignTerrain = true,
+					params = {
+						type = prm.trackTypes[trackType],
+						catenary = (params.plbsCatenary == 1),
+					},
+						edges = trackEdges,
+						snapNodes = trackSnapNodes,
+						freeNodes = streetutil.freeAllNodes(trackEdges),
+				}
+
+				if trackHeight == 3 then
+					trackEdge.edgeType = "BRIDGE"
+					trackEdge.edgeTypeName = prm.bridgeTypes[bridgeType]
+				elseif trackHeight == 5 then
+					trackEdge.edgeType = "TUNNEL" -- optional
+					trackEdge.edgeTypeName = "trackroad_old.lua" -- optional
+				end
+
+				table.insert(result.edgeLists, trackEdge)
+			end
+
+			if numberOfStreetsRight > 0 then
+				streetRightEdge = {
+					type = "STREET",
+					alignTerrain = true,
+					params = {
+						type = prm.streetTypes[streetType]
+					},
+					edges = streetRightEdges,
+					snapNodes = streetRightSnapNodes,
+					freeNodes = streetutil.freeAllNodes(streetRightEdges),
+				}
+
+				if streetRightHeight == 2 then
+					streetRightEdge.edgeType = "BRIDGE"
+					streetRightEdge.edgeTypeName = prm.bridgeTypes[bridgeType]
+				elseif streetRightHeight == 4 then
+					streetRightEdge.edgeType = "TUNNEL" -- optional
+					streetRightEdge.edgeTypeName = "street_old.lua" -- optional
+				end
+
+				table.insert(result.edgeLists, streetRightEdge)
+			end
+
+			result.terrainAlignmentLists = {
+				{
+				type = "EQUAL",
+				faces = { }
+				}
+			}
+
+			result.groundFaces = {}
+			result.cost = 0
+	--debugPrint(result)
+			return result
+		end
+	}
+end
